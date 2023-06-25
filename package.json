@@ -1,6 +1,8 @@
 {
   "name": "explain",
   "version": "1.0.0",
+  "type": "module",
+  "author": "Miklos Megyes <hello@miklos.dev>",
   "description": "",
   "main": "explain.js",
   "bin": {
@@ -9,9 +11,14 @@
   "scripts": {
     "explain": "node --no-warnings=ExperimentalWarning explain.mjs"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "CLI",
+    "OpenAI",
+    "GPT-3",
+    "explain",
+    "devtool"
+  ],
+  "license": "MIT",
   "dependencies": {
     "arg": "^5.0.2",
     "chalk": "^5.2.0",
