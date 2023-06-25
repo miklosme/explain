@@ -6,6 +6,7 @@ import inquirer from 'inquirer';
 import fetch from 'node-fetch';
 import fs from 'fs/promises';
 import pkg from './package.json' assert { type: 'json' };
+import { get_encoding, encoding_for_model } from '@dqbd/tiktoken';
 import dotenv from 'dotenv';
 import path from 'path';
 import os from 'os';
@@ -125,6 +126,8 @@ console.log(chalk.bold('Using options:'));
 console.log(chalk.cyan(YAML.stringify(options)));
 console.log();
 
+const tiktoken = encoding_for_model(options.model);
+
 const COMMON_JUNK_DIRS = ['node_modules', '.git', '.next', '.vscode', '.idea', '.github', 'dist', 'build'];
 
 async function* getFiles(dir) {
@@ -166,8 +169,23 @@ const inquirerQuestions = [
   {
     type: 'checkbox',
     name: 'files',
-    message: 'Which files do you want an explanation for?',
+    message: (...args) => {
+      console.log('files q', ...args);
+      // const tokens = answers.files?.length;
+      const tokens = 666;
+      return `Which files do you want an explanation for? Currently selected ${tokens} tokens.`;
+    },
     choices: files.map((file) => path.relative(options.cwd, file)),
+    pageSize: 20,
+    validate(input) {
+      console.log('validate', input)
+      throw new Error('test')
+      if (input < 5) {
+        throw Error('You must select at least 5 files.');
+      }
+
+      return true;
+    },
   },
 ];
 
@@ -176,8 +194,17 @@ if (!OPENAI_API_KEY) {
     type: 'password',
     name: 'apiKey',
     message: 'Please enter your OpenAI API key. It will be stored in ~/.explain-config',
+    mask: '*',
   });
 }
+
+// const ui = new inquirer.ui.BottomBar();
+// process.stdout.pipe(ui.log);
+
+// let i = 0
+// setInterval(() => {
+//   ui.updateBottomBar(`Loading ${i++}`)
+// }, 1000)
 
 inquirer
   .prompt(inquirerQuestions)
