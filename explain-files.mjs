@@ -13,7 +13,7 @@ const configPath = path.join(os.homedir(), '.explain-config');
 const args = arg({
   '--help': Boolean,
   '--version': Boolean,
-  '--filter': [String],
+  '--ext': [String],
   '--model': String,
   '--temperature': Number,
   '--prompt': String,
@@ -22,7 +22,7 @@ const args = arg({
 
   '-h': '--help',
   '-v': '--version',
-  '-f': '--filter',
+  '-e': '--ext',
   '-m': '--model',
   '-t': '--temperature',
   '-p': '--prompt',
@@ -63,7 +63,7 @@ if (args['--help']) {
   ${chalk.bold('Options')}
     -h, --help              Shows this help message
     -v, --version           Shows the version number
-    -f, --filter            File extensions to filter for
+    -e, --ext               Only consider files with the given extension
     -m, --model             The model to use
     -t, --temperature       The temperature to use
     -p, --prompt            The prompt to use
@@ -74,26 +74,26 @@ if (args['--help']) {
     ${chalk.gray('# Explain all files in the current directory')}
     ${chalk.cyan('$ explain')}
     ${chalk.gray('# Explain all files in the current directory with the .js extension')}
-    ${chalk.cyan('$ explain --filter js')}
+    ${chalk.cyan('$ explain --ext js')}
     ${chalk.gray('# Explain all files in the current directory with the .js and .ts extension')}
-    ${chalk.cyan('$ explain --filter js --filter ts')}
+    ${chalk.cyan('$ explain --ext js --ext ts')}
     ${chalk.gray('# Explain all files in the current directory with the .js and .ts extension using the davinci model')}
-    ${chalk.cyan('$ explain --filter js --filter ts --model davinci')}
+    ${chalk.cyan('$ explain --ext js --ext ts --model davinci')}
     ${chalk.gray(
       '# Explain all files in the current directory with the .js and .ts extension using the davinci model with a temperature of 0.5',
     )}
-    ${chalk.cyan('$ explain --filter js --filter ts --model davinci --temperature 0.5')}
+    ${chalk.cyan('$ explain --ext js --ext ts --model davinci --temperature 0.5')}
     ${chalk.gray(
       '# Explain all files in the current directory with the .js and .ts extension using the davinci model with a temperature of 0.5 and a prompt of "Explain the following code:"',
     )}
     ${chalk.cyan(
-      '$ explain --filter js --filter ts --model davinci --temperature 0.5 --prompt "Explain the following code:"',
+      '$ explain --ext js --ext ts --model davinci --temperature 0.5 --prompt "Explain the following code:"',
     )}
     ${chalk.gray(
       '# Explain all files in the current directory with the .js and .ts extension using the davinci model with a temperature of 0.5 and a prompt of "Explain the following code:" and a maximum of 800 tokens',
     )}
     ${chalk.cyan(
-      '$ explain --filter js --filter ts --model davinci --temperature 0.5 --prompt "Explain the following code:" --max-tokens 800',
+      '$ explain --ext js --ext ts --model davinci --temperature 0.5 --prompt "Explain the following code:" --max-tokens 800',
     )}
   `);
   process.exit(0);
@@ -104,7 +104,7 @@ Explain the following code. Focus on a high level overview. Use bullet points.
 `;
 
 const options = {
-  filter: args['--filter'] || ['js', 'ts', 'jsx', 'tsx', 'mjs', 'cjs'],
+  ext: args['--ext'],
   model: args['--model'] || 'gpt-3.5-turbo',
   temperature: args['--temperature'] || 0.8,
   prompt: args['--prompt'] || DEFAULT_PROMPT,
@@ -132,7 +132,7 @@ async function* getFiles(dir) {
 const files = [];
 
 for await (const f of getFiles(process.cwd())) {
-  if (!options.filter || options.filter.some((extension) => f.endsWith(extension))) {
+  if (!options.ext || options.ext.some((extension) => f.endsWith(extension))) {
     files.push(f);
   }
 }
@@ -189,7 +189,7 @@ async function explain(answers) {
     }),
   );
 
-  function filecontentToMessage({ file, relative, content }) {
+  function fileContentToMessage({ file, relative, content }) {
     return {
       role: 'user',
       content: `Filename: ${relative}\n\n\`\`\`\n${content}\n\`\`\`\n`.trim(),
@@ -199,14 +199,15 @@ async function explain(answers) {
   const messages = [
     {
       role: 'system',
-      content:
-        'You are an experienced software engineer with computer science background. You are great at explaining code to others.',
+      content: `
+        You are an experienced software engineer with computer science background. You are great at explaining code to others.
+      `.trim(),
     },
     {
       role: 'user',
-      content: options.prompt,
+      content: options.prompt.trim(),
     },
-    ...contents.map((content) => filecontentToMessage(content)),
+    ...contents.map((content) => fileContentToMessage(content)),
   ];
 
   console.log();
