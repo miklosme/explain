@@ -1,4 +1,4 @@
-# Explain
+# Explain Files
 
 Tiny CLI utility to use OpenAI's GPT to explain code
 
@@ -7,7 +7,7 @@ Tiny CLI utility to use OpenAI's GPT to explain code
 ```bash
 # this will list files in the current directory
 # select the ones you are interested in
-$ npx explain
+$ npx explain-files
 ```
 
 ## Options

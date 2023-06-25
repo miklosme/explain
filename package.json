@@ -1,15 +1,15 @@
 {
-  "name": "explain",
+  "name": "explain-files",
   "version": "1.0.0",
   "type": "module",
   "author": "Miklos Megyes <hello@miklos.dev>",
   "description": "",
-  "main": "explain.js",
+  "main": "explain-files.js",
   "bin": {
-    "explain": "./explain.mjs"
+    "explain-files": "./explain-files.mjs"
   },
   "scripts": {
-    "explain": "node --no-warnings=ExperimentalWarning explain.mjs"
+    "explain-files": "node --no-warnings=ExperimentalWarning explain-files.mjs"
   },
   "keywords": [
     "CLI",
