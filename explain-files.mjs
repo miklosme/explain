@@ -17,6 +17,8 @@ const args = arg({
   '--help': Boolean,
   '--version': Boolean,
   '--ext': [String],
+  '--filter': [String],
+  '--cwd': String,
   '--model': String,
   '--temperature': Number,
   '--prompt': String,
@@ -26,6 +28,7 @@ const args = arg({
   '-h': '--help',
   '-v': '--version',
   '-e': '--ext',
+  '-f': '--filter',
   '-m': '--model',
   '-t': '--temperature',
   '-p': '--prompt',
@@ -67,6 +70,8 @@ if (args['--help']) {
     -h, --help              Shows this help message
     -v, --version           Shows the version number
     -e, --ext               Only consider files with the given extension
+    -f, --filter            Only consider files that include the given string
+    --cwd                   The directory to run in (defaults to ./)
     -m, --model             The model to use
     -t, --temperature       The temperature to use
     -p, --prompt            The prompt to use
@@ -108,6 +113,8 @@ Explain the following code. Focus on a high level overview. Use bullet points.
 
 const options = {
   ext: args['--ext'],
+  filter: args['--filter'],
+  cwd: args['--cwd'] ? path.resolve(args['--cwd']) : process.cwd(),
   model: args['--model'] || 'gpt-3.5-turbo',
   temperature: args['--temperature'] || 0.8,
   prompt: (args['--prompt'] || DEFAULT_PROMPT).trim(),
@@ -136,10 +143,18 @@ async function* getFiles(dir) {
 
 const files = [];
 
-for await (const f of getFiles(process.cwd())) {
-  if (!options.ext || options.ext.some((extension) => f.endsWith(extension))) {
-    files.push(f);
+for await (const f of getFiles(options.cwd)) {
+  // if filter is set and file path does not include any of the filter strings, skip
+  if (options.filter && !options.filter.some((filter) => f.includes(filter))) {
+    continue;
   }
+
+  // if ext is set and file path does not end with any of the ext strings, skip
+  if (options.ext && !options.ext.some((extension) => f.endsWith(extension))) {
+    continue;
+  }
+
+  files.push(f);
 }
 
 if (files.length === 0) {
@@ -152,7 +167,7 @@ const inquirerQuestions = [
     type: 'checkbox',
     name: 'files',
     message: 'Which files do you want an explanation for?',
-    choices: files.map((file) => path.relative(process.cwd(), file)),
+    choices: files.map((file) => path.relative(options.cwd, file)),
   },
 ];
 
@@ -188,7 +203,7 @@ async function explain(answers) {
     answers.files.map(async (file) => {
       return {
         file,
-        relative: path.relative(process.cwd(), file),
+        relative: path.relative(options.cwd, file),
         content: await fs.readFile(file, 'utf-8'),
       };
     }),

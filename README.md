@@ -16,7 +16,9 @@ $ npx explain-files --ext ts --ext tsx
 
     -h, --help              Shows this help message
     -v, --version           Shows the version number
-    -e, --ext               Only consider files with the given extension (defaults: js, ts, jsx, tsx, mjs, cjs)
+    -e, --ext               Only consider files with the given extension
+    -f, --filter            Only consider files that include the given string
+    --cwd                   The directory to run in (defaults to ./)
     -m, --model             The model to use
     -t, --temperature       The temperature to use
     -p, --prompt            The prompt to use
