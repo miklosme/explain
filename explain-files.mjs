@@ -7,6 +7,7 @@ import pkg from './package.json' assert { type: 'json' };
 import dotenv from 'dotenv';
 import path from 'path';
 import os from 'os';
+import YAML from 'yaml';
 
 const configPath = path.join(os.homedir(), '.explain-config');
 
@@ -107,12 +108,12 @@ const options = {
   ext: args['--ext'],
   model: args['--model'] || 'gpt-3.5-turbo',
   temperature: args['--temperature'] || 0.8,
-  prompt: args['--prompt'] || DEFAULT_PROMPT,
+  prompt: (args['--prompt'] || DEFAULT_PROMPT).trim(),
   maxTokens: args['--max-tokens'] || 400,
 };
 
 console.log(chalk.bold('Using options:'));
-console.log(chalk.cyan(JSON.stringify(options, null, 2)));
+console.log(chalk.cyan(YAML.stringify(options)));
 console.log();
 
 const COMMON_JUNK_DIRS = ['node_modules', '.git', '.next', '.vscode', '.idea', '.github', 'dist', 'build'];
