@@ -200,16 +200,17 @@ async function explain(answers) {
   }
 
   const contents = await Promise.all(
-    answers.files.map(async (file) => {
+    answers.files.map(async (relative) => {
+      const absolute = path.resolve(options.cwd, relative);
       return {
-        file,
-        relative: path.relative(options.cwd, file),
-        content: await fs.readFile(file, 'utf-8'),
+        relative,
+        absolute,
+        content: await fs.readFile(absolute, 'utf-8'),
       };
     }),
   );
 
-  function fileContentToMessage({ file, relative, content }) {
+  function fileContentToMessage({ absolute, relative, content }) {
     return {
       role: 'user',
       content: `Filename: ${relative}\n\n\`\`\`\n${content}\n\`\`\`\n`.trim(),
