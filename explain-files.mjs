@@ -115,10 +115,12 @@ console.log(chalk.bold('Using options:'));
 console.log(chalk.cyan(JSON.stringify(options, null, 2)));
 console.log();
 
+const COMMON_JUNK_DIRS = ['node_modules', '.git', '.next', '.vscode', '.idea', '.github', 'dist', 'build'];
+
 async function* getFiles(dir) {
   const dirents = await fs.readdir(dir, { withFileTypes: true });
   for (const dirent of dirents) {
-    if (dirent.name === 'node_modules') continue;
+    if (COMMON_JUNK_DIRS.includes(dirent.name)) continue;
 
     const res = path.resolve(dir, dirent.name);
     if (dirent.isDirectory()) {
