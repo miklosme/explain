@@ -3,6 +3,11 @@
   "version": "1.1.6",
   "type": "module",
   "author": "Miklos Megyes <hello@miklos.dev>",
+  "homepage": "https://github.com/miklosme/explain",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:miklosme/explain.git"
+  },
   "description": "",
   "main": "explain-files.js",
   "bin": {
@@ -14,7 +19,10 @@
   "keywords": [
     "CLI",
     "OpenAI",
+    "ChatGPT",
+    "AI",
     "GPT-3",
+    "GPT-4",
     "explain",
     "devtool"
   ],

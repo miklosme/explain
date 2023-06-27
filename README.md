@@ -8,7 +8,10 @@ Tiny CLI utility to use OpenAI's GPT to explain code
 # basic
 $ npx explain-files
 
-# only consider .ts and .tsx files
+# skip the file selector
+$ npx explain-files spaghetti.js
+
+# only show .ts and .tsx files in the file selector
 $ npx explain-files --ext ts --ext tsx
 ```
 
