@@ -128,11 +128,6 @@ console.log();
 
 const encoding = encoding_for_model(options.model);
 
-function countTokenInFile(file) {
-  console.log({ file, x: encoding.encode(file.content) });
-  return encoding.encode(file.content).length;
-}
-
 const COMMON_JUNK_DIRS = ['node_modules', '.git', '.next', '.vscode', '.idea', '.github', 'dist', 'build'];
 
 async function* getFiles(dir) {
@@ -177,15 +172,19 @@ const inquirerQuestions = [
     message: 'Which files do you want an explanation for?',
     choices: files.map((file) => path.relative(options.cwd, file)),
     pageSize: 20,
-    validate(files) {
-      const tokenCount = files.reduce((acc, file) => {
+    async validate(files) {
+      let tokenCount = 0;
+
+      for await (const file of files) {
         const absolute = path.resolve(options.cwd, file);
-        const count = countTokenInFile(absolute);
+        const content = await fs.readFile(absolute, 'utf8');
+        const count = encoding.encode(content).length;
 
-        return acc + count;
-      }, 0);
+        tokenCount += count;
+      }
 
-      const MAX_TOKEN = 20;
+      // TODO read this from list models api
+      const MAX_TOKEN = 4000;
 
       if (tokenCount > MAX_TOKEN) {
         throw new Error(
@@ -206,14 +205,6 @@ if (!OPENAI_API_KEY) {
     mask: '*',
   });
 }
-
-// const ui = new inquirer.ui.BottomBar();
-// process.stdout.pipe(ui.log);
-
-// let i = 0
-// setInterval(() => {
-//   ui.updateBottomBar(`Loading ${i++}`)
-// }, 1000)
 
 inquirer
   .prompt(inquirerQuestions)
@@ -243,7 +234,6 @@ async function explain(answers) {
         relative,
         absolute,
         content,
-        tokenCount: encoding.encode(content),
       };
     }),
   );
