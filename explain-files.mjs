@@ -6,6 +6,7 @@ import inquirer from 'inquirer';
 import fetch from 'node-fetch';
 import fs from 'fs/promises';
 import pkg from './package.json' assert { type: 'json' };
+import { get_encoding, encoding_for_model } from '@dqbd/tiktoken';
 import dotenv from 'dotenv';
 import path from 'path';
 import os from 'os';
@@ -125,6 +126,8 @@ console.log(chalk.bold('Using options:'));
 console.log(chalk.cyan(YAML.stringify(options)));
 console.log();
 
+const encoding = encoding_for_model(options.model);
+
 const COMMON_JUNK_DIRS = ['node_modules', '.git', '.next', '.vscode', '.idea', '.github', 'dist', 'build'];
 
 async function* getFiles(dir) {
@@ -168,6 +171,29 @@ const inquirerQuestions = [
     name: 'files',
     message: 'Which files do you want an explanation for?',
     choices: files.map((file) => path.relative(options.cwd, file)),
+    pageSize: 20,
+    async validate(files) {
+      let tokenCount = 0;
+
+      for await (const file of files) {
+        const absolute = path.resolve(options.cwd, file);
+        const content = await fs.readFile(absolute, 'utf8');
+        const count = encoding.encode(content).length;
+
+        tokenCount += count;
+      }
+
+      // TODO read this from list models api
+      const MAX_TOKEN = 4000;
+
+      if (tokenCount > MAX_TOKEN) {
+        throw new Error(
+          `You selected files with a sum of ${tokenCount} tokens. The maximum is ${MAX_TOKEN}. Please select fewer files.`,
+        );
+      }
+
+      return true;
+    },
   },
 ];
 
@@ -176,6 +202,7 @@ if (!OPENAI_API_KEY) {
     type: 'password',
     name: 'apiKey',
     message: 'Please enter your OpenAI API key. It will be stored in ~/.explain-config',
+    mask: '*',
   });
 }
 
@@ -202,10 +229,11 @@ async function explain(answers) {
   const contents = await Promise.all(
     answers.files.map(async (relative) => {
       const absolute = path.resolve(options.cwd, relative);
+      const content = await fs.readFile(absolute, 'utf-8');
       return {
         relative,
         absolute,
-        content: await fs.readFile(absolute, 'utf-8'),
+        content,
       };
     }),
   );
