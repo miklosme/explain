@@ -238,8 +238,6 @@ async function explain(answers) {
     }),
   );
 
-  console.log(contents.map((c) => ({ relative: c.relative, tokenCount: c.tokenCount })));
-
   function fileContentToMessage({ absolute, relative, content }) {
     return {
       role: 'user',
