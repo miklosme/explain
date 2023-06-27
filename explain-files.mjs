@@ -126,7 +126,12 @@ console.log(chalk.bold('Using options:'));
 console.log(chalk.cyan(YAML.stringify(options)));
 console.log();
 
-const tiktoken = encoding_for_model(options.model);
+const encoding = encoding_for_model(options.model);
+
+function countTokenInFile(file) {
+  console.log({ file, x: encoding.encode(file.content) });
+  return encoding.encode(file.content).length;
+}
 
 const COMMON_JUNK_DIRS = ['node_modules', '.git', '.next', '.vscode', '.idea', '.github', 'dist', 'build'];
 
@@ -169,19 +174,23 @@ const inquirerQuestions = [
   {
     type: 'checkbox',
     name: 'files',
-    message: (...args) => {
-      console.log('files q', ...args);
-      // const tokens = answers.files?.length;
-      const tokens = 666;
-      return `Which files do you want an explanation for? Currently selected ${tokens} tokens.`;
-    },
+    message: 'Which files do you want an explanation for?',
     choices: files.map((file) => path.relative(options.cwd, file)),
     pageSize: 20,
-    validate(input) {
-      console.log('validate', input)
-      throw new Error('test')
-      if (input < 5) {
-        throw Error('You must select at least 5 files.');
+    validate(files) {
+      const tokenCount = files.reduce((acc, file) => {
+        const absolute = path.resolve(options.cwd, file);
+        const count = countTokenInFile(absolute);
+
+        return acc + count;
+      }, 0);
+
+      const MAX_TOKEN = 20;
+
+      if (tokenCount > MAX_TOKEN) {
+        throw new Error(
+          `You selected files with a sum of ${tokenCount} tokens. The maximum is ${MAX_TOKEN}. Please select fewer files.`,
+        );
       }
 
       return true;
@@ -229,13 +238,17 @@ async function explain(answers) {
   const contents = await Promise.all(
     answers.files.map(async (relative) => {
       const absolute = path.resolve(options.cwd, relative);
+      const content = await fs.readFile(absolute, 'utf-8');
       return {
         relative,
         absolute,
-        content: await fs.readFile(absolute, 'utf-8'),
+        content,
+        tokenCount: encoding.encode(content),
       };
     }),
   );
+
+  console.log(contents.map((c) => ({ relative: c.relative, tokenCount: c.tokenCount })));
 
   function fileContentToMessage({ absolute, relative, content }) {
     return {
