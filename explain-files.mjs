@@ -116,17 +116,16 @@ const options = {
   ext: args['--ext'],
   filter: args['--filter'],
   cwd: args['--cwd'] ? path.resolve(args['--cwd']) : process.cwd(),
-  model: args['--model'] || 'gpt-3.5-turbo',
+  model: args['--model'],
   temperature: args['--temperature'] || 0.8,
   prompt: (args['--prompt'] || DEFAULT_PROMPT).trim(),
   maxTokens: args['--max-tokens'] || 400,
+  files: args['_']?.length ? args['_'] : undefined,
 };
 
 console.log(chalk.bold('Using options:'));
 console.log(chalk.cyan(YAML.stringify(options)));
 console.log();
-
-const encoding = encoding_for_model(options.model);
 
 const COMMON_JUNK_DIRS = ['node_modules', '.git', '.next', '.vscode', '.idea', '.github', 'dist', 'build'];
 
@@ -144,35 +143,69 @@ async function* getFiles(dir) {
   }
 }
 
-const files = [];
-
-for await (const f of getFiles(options.cwd)) {
-  // if filter is set and file path does not include any of the filter strings, skip
-  if (options.filter && !options.filter.some((filter) => f.includes(filter))) {
-    continue;
-  }
-
-  // if ext is set and file path does not end with any of the ext strings, skip
-  if (options.ext && !options.ext.some((extension) => f.endsWith(extension))) {
-    continue;
-  }
-
-  files.push(f);
-}
-
-if (files.length === 0) {
-  console.log(chalk.red('No matching files found'));
-  process.exit(1);
-}
-
 const inquirerQuestions = [
+  {
+    type: 'password',
+    name: 'apiKey',
+    message: 'Please enter your OpenAI API key. It will be stored in ~/.explain-config',
+    mask: '*',
+    when: (answer) => !answer.apiKey,
+  },
+  {
+    type: 'list',
+    name: 'model',
+    message: 'Which model do you want to use?',
+    choices: async (answers) => {
+      const models = await fetch('https://api.openai.com/v1/models', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${answers.apiKey}`,
+        },
+      }).then((res) => res.json());
+
+      return models.data.map((model) => model.id).filter((id) => id.startsWith('gpt-'));
+    },
+    when: (answer) => !answer.model,
+  },
   {
     type: 'checkbox',
     name: 'files',
     message: 'Which files do you want an explanation for?',
-    choices: files.map((file) => path.relative(options.cwd, file)),
+    choices: async () => {
+      const files = [];
+
+      for await (const f of getFiles(options.cwd)) {
+        // if filter is set and file path does not include any of the filter strings, skip
+        if (options.filter && !options.filter.some((filter) => f.includes(filter))) {
+          continue;
+        }
+
+        // if ext is set and file path does not end with any of the ext strings, skip
+        if (options.ext && !options.ext.some((extension) => f.endsWith(extension))) {
+          continue;
+        }
+
+        files.push(f);
+      }
+
+      if (files.length === 0) {
+        console.log(chalk.red('No matching files found'));
+        process.exit(1);
+      }
+
+      return files.map((file) => path.relative(options.cwd, file));
+    },
     pageSize: 20,
-    async validate(files) {
+    async validate(files, answers) {
+      let encoding;
+      try {
+        encoding = encoding_for_model(answers.model);
+      } catch (error) {
+        // if tiktoken doesn't know this model, fallback to gpt2
+        encoding = get_encoding('gpt2');
+      }
+
       let tokenCount = 0;
 
       for await (const file of files) {
@@ -183,8 +216,9 @@ const inquirerQuestions = [
         tokenCount += count;
       }
 
-      // TODO read this from list models api
-      const MAX_TOKEN = 4000;
+      // the model name contains a context size in the form of a number and a "k"
+      const size = answers.model.match(/\d+k/);
+      const MAX_TOKEN = size ? parseInt(size[0]) * 1000 : 4000;
 
       if (tokenCount > MAX_TOKEN) {
         throw new Error(
@@ -197,17 +231,12 @@ const inquirerQuestions = [
   },
 ];
 
-if (!OPENAI_API_KEY) {
-  inquirerQuestions.push({
-    type: 'password',
-    name: 'apiKey',
-    message: 'Please enter your OpenAI API key. It will be stored in ~/.explain-config',
-    mask: '*',
-  });
-}
-
 inquirer
-  .prompt(inquirerQuestions)
+  .prompt(inquirerQuestions, {
+    apiKey: OPENAI_API_KEY,
+    model: options.model,
+    files: options.files,
+  })
   .then(explain)
   .catch((error) => {
     if (error.isTtyError) {
@@ -218,12 +247,29 @@ inquirer
   });
 
 async function explain(answers) {
-  if (answers.apiKey) {
+  if (!OPENAI_API_KEY) {
     OPENAI_API_KEY = answers.apiKey.trim();
 
     await fs.writeFile(configPath, `OPENAI_API_KEY=${OPENAI_API_KEY}`, 'utf-8');
 
     console.log(chalk.green(`API key stored in ${configPath}`));
+  }
+
+  options.model = answers.model;
+
+  // THIS DOES NOT RETURNS CONTEXT SIZE SO USELESS
+  // const modelInfo = await fetch(`https://api.openai.com/v1/models/${options.model}`, {
+  //   method: 'GET',
+  //   headers: {
+  //     'Content-Type': 'application/json',
+  //     Authorization: `Bearer ${OPENAI_API_KEY}`,
+  //   },
+  // }).then((res) => res.json());
+
+  // console.log(modelInfo);
+
+  if (answers.files.length === 0) {
+    throw new Error('No files selected');
   }
 
   const contents = await Promise.all(
