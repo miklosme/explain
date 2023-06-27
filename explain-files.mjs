@@ -229,6 +229,21 @@ const inquirerQuestions = [
       return true;
     },
   },
+  {
+    type: 'confirm',
+    name: 'changePrompt',
+    message: 'Do you want to change the default prompt?',
+    default: false,
+    when: () => !args['--prompt'],
+  },
+  {
+    type: 'editor',
+    name: 'prompt',
+    message: 'What prompt do you want to use?',
+    default: DEFAULT_PROMPT,
+    askAnswered: true,
+    when: (answers) => answers.changePrompt,
+  },
 ];
 
 inquirer
@@ -236,6 +251,7 @@ inquirer
     apiKey: OPENAI_API_KEY,
     model: options.model,
     files: options.files,
+    prompt: options.prompt,
   })
   .then(explain)
   .catch((error) => {
@@ -300,7 +316,7 @@ async function explain(answers) {
     },
     {
       role: 'user',
-      content: options.prompt.trim(),
+      content: answers.prompt.trim(),
     },
     ...contents.map((content) => fileContentToMessage(content)),
   ];

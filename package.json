@@ -1,6 +1,6 @@
 {
   "name": "explain-files",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "author": "Miklos Megyes <hello@miklos.dev>",
   "homepage": "https://github.com/miklosme/explain",
