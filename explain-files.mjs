@@ -3,7 +3,6 @@
 import chalk from 'chalk';
 import arg from 'arg';
 import inquirer from 'inquirer';
-import fetch from 'node-fetch';
 import fs from 'fs/promises';
 import pkg from './package.json' assert { type: 'json' };
 import { get_encoding, encoding_for_model } from '@dqbd/tiktoken';
@@ -11,6 +10,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import os from 'os';
 import YAML from 'yaml';
+import { AIStream } from 'ai';
 
 const configPath = path.join(os.homedir(), '.explain-config');
 
@@ -335,26 +335,36 @@ async function explain(answers) {
       model: options.model,
       temperature: options.temperature,
       max_tokens: options.maxTokens,
+      stream: true,
     }),
   });
 
-  const json = await resp.json();
-
-  if (json.error) {
-    console.log();
-    console.log(chalk.red.bold('OpenAI error:'));
-    console.log();
-    console.log(json.error.message);
-    process.exit(1);
-  }
-
   console.log();
   console.log(chalk.blue.bold('OpenAI says:'));
-  console.log();
-  console.log(json.choices[0].message.content);
 
-  if (json.choices[0].finish_reason !== 'stop') {
-    console.log();
-    console.log(chalk.red(`OpenAI stopped early, reason: ${json.choices[0].finish_reason}`));
-  }
+  AIStream(resp, (chunk) => {
+    const json = JSON.parse(chunk);
+
+    if (json.error) {
+      console.log();
+      console.log(chalk.red.bold('OpenAI error:'));
+      console.log();
+      console.log(json.error.message);
+      process.exit(1);
+    }
+
+    const text = json.choices[0]?.delta?.content ?? json.choices[0]?.text ?? '';
+    process.stdout.write(text);
+
+    const finishReason = json.choices[0].finish_reason;
+
+    if (finishReason) {
+      if (finishReason !== 'stop') {
+        console.log();
+        console.log(chalk.red(`OpenAI stopped early, reason: ${json.choices[0].finish_reason}`));
+      }
+
+      process.stdout.write('\n');
+    }
+  });
 }

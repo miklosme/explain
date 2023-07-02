@@ -1,6 +1,6 @@
 {
   "name": "explain-files",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "type": "module",
   "author": "Miklos Megyes <hello@miklos.dev>",
   "homepage": "https://github.com/miklosme/explain",
@@ -29,11 +29,11 @@
   "license": "MIT",
   "dependencies": {
     "@dqbd/tiktoken": "^1.0.7",
+    "ai": "^2.1.13",
     "arg": "^5.0.2",
     "chalk": "^5.2.0",
     "dotenv": "^16.3.1",
     "inquirer": "^9.2.7",
-    "node-fetch": "^3.3.1",
     "yaml": "^2.3.1"
   }
 }
